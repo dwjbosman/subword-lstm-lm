@@ -9,10 +9,11 @@ import random
 import pickle
 import collections
 import operator
-
+import json
 
 class TextLoader:
     def __init__(self, args, train=True):
+        self.json = args.json
         self.save_dir = args.save_dir
         self.batch_size = args.batch_size
         self.num_steps = args.num_steps
@@ -25,11 +26,16 @@ class TextLoader:
         self.eos = args.eos
         self.sos = args.sos
 
-        self.words_vocab_file = os.path.join(self.save_dir, "words_vocab.pkl")
+        if self.json == "true":
+            self.config_extension = "json"
+        else:
+            self.config_extension = "pkl"
+
+        self.words_vocab_file = os.path.join(self.save_dir, "words_vocab.%s" %(self.config_extension))
         if self.unit == "oracle":
             self.lowercase = True
         if self.unit != "word":
-            self.sub_vocab_file = os.path.join(self.save_dir, "sub_vocab.pkl")
+            self.sub_vocab_file = os.path.join(self.save_dir, "sub_vocab.%s" %(self.config_extension))
 
         # Variables
         self.max_word_len = 0
@@ -97,8 +103,12 @@ class TextLoader:
         self.word_vocab_size = len(self.word_to_id)
         self.max_word_len = self.get_max_word_length(self.word_to_id)
 
-        with open(self.words_vocab_file, 'wb') as f:
-            pickle.dump((self.word_to_id, self.unk_word_list), f)
+        if self.json == "true":
+            with open(self.words_vocab_file, 'w') as f:
+                json.dump({"word_to_id" : self.word_to_id, "unk_word_list" : list(self.unk_word_list)}, f)
+        else:
+            with open(self.words_vocab_file, 'wb') as f:
+                pickle.dump((self.word_to_id, self.unk_word_list), f)
         if self.unit != "word":
             self.preprocess_sub_units()
 
@@ -123,8 +133,12 @@ class TextLoader:
         """
         self.char_to_id, self.unk_char_list = self.build_vocab(mode="char")
         self.subword_vocab_size = len(self.char_to_id)
-        with open(self.sub_vocab_file, 'wb') as f:
-            pickle.dump((self.char_to_id, self.unk_char_list, self.max_word_len), f)
+        if self.json == "true":
+            with open(self.sub_vocab_file, 'w') as f:
+                json.dump({"char_to_id" : self.char_to_id, "unk_char_list" : list(self.unk_char_list), "max_word_len" : self.max_word_len}, f)
+        else:
+            with open(self.sub_vocab_file, 'wb') as f:
+                pickle.dump((self.char_to_id, self.unk_char_list, self.max_word_len), f)
 
     def preprocess_char_ngram(self):
         """
@@ -136,8 +150,13 @@ class TextLoader:
             if ch not in self.ngram_to_id:
                 self.ngram_to_id[ch] = len(self.ngram_to_id)
         self.subword_vocab_size = len(self.ngram_to_id)
-        with open(self.sub_vocab_file, 'wb') as f:
-            pickle.dump((self.ngram_to_id, self.unk_char_list, self.unk_ngram_list, self.max_ngram_per_word), f)
+        
+        if self.json == "true":
+            with open(self.sub_vocab_file, 'w') as f:
+              json.dump({"ngram_to_id" : self.ngram_to_id, "unk_char_list" : list(self.unk_char_list), "unk_ngram_list" : list(self.unk_ngram_list), "max_ngram_per_word" : self.max_ngram_per_word}, f)
+        else:       
+            with open(self.sub_vocab_file, 'wb') as f:
+                pickle.dump((self.ngram_to_id, self.unk_char_list, self.unk_ngram_list, self.max_ngram_per_word), f)
 
     def preprocess_morpheme(self):
         """
@@ -149,8 +168,16 @@ class TextLoader:
             if ch not in self.morpheme_to_id:
                 self.morpheme_to_id[ch] = len(self.morpheme_to_id)
         self.subword_vocab_size = len(self.morpheme_to_id)
-        with open(self.sub_vocab_file, 'wb') as f:
-            pickle.dump((self.morpheme_to_id, self.unk_char_list, self.unk_morph_list, self.max_morph_per_word), f)
+        if self.json == "true":
+            with open(self.sub_vocab_file, 'w') as f:
+                json.dump(
+                    {"morpheme_to_id" : self.morpheme_to_id, 
+                    "unk_char_list" : list(self.unk_char_list), 
+                    "unk_morph_list" : list(self.unk_morph_list), 
+                    "max_morph_per_word" : self.max_morph_per_word}, f)
+        else:
+            with open(self.sub_vocab_file, 'wb') as f:
+                pickle.dump((self.morpheme_to_id, self.unk_char_list, self.unk_morph_list, self.max_morph_per_word), f)
 
     def preprocess_oracle(self):
         """
@@ -158,8 +185,12 @@ class TextLoader:
         """
         self.morpheme_to_id, self.max_morph_per_word = self.build_oracle_vocab()
         self.subword_vocab_size = len(self.morpheme_to_id)
-        with open(self.sub_vocab_file, 'wb') as f:
-            pickle.dump((self.morpheme_to_id, self.max_morph_per_word), f)
+        if self.json == "true":
+            with open(self.sub_vocab_file, 'w') as f:
+                json.dump({"morpheme_to_id" : self.morpheme_to_id, "max_morph_per_word" : self.max_morph_per_word}, f)
+        else:
+            with open(self.sub_vocab_file, 'wb') as f:
+                pickle.dump((self.morpheme_to_id, self.max_morph_per_word), f)
 
     def load_preprocessed(self):
         """
@@ -209,10 +240,13 @@ class TextLoader:
         if mode == "word":
             data = self.read_words()
         else:
+            # read a list of chars
             data = self.read_chars()
 
+        # a Counter is a dictionary for counting hashable objects
         counter = collections.Counter(data)
         count_pairs = sorted(counter.items(), key=lambda x: (-x[-1], x[0]))
+        # count_pairs contains a list of (item, count) tuples
         item_to_id = dict()
         unk_list = set()
 
@@ -221,6 +255,7 @@ class TextLoader:
             # '$' is a end of word symbol
             item_to_id = self.add_to_dict(item_to_id, '^', '$')
         else:
+            # if specified, use a predefined output vocabulary
             if len(self.output_vocab) > 0:
                 print('Using output vocab!')
                 print('Output vocab size:', self.out_vocab_size)
@@ -228,19 +263,23 @@ class TextLoader:
 
                 for k, v in sorted_vocab:
                     item_to_id[k] = len(item_to_id)
+                    # do not take all items from output_vocab, take atmost out_vocab_size
                     if len(item_to_id) == self.out_vocab_size:
                         break
             else:
+                # add <unk>, soc and eos to item_to_id dictionary
                 item_to_id['<unk>'] = len(item_to_id)
                 if self.sos != '':
                     item_to_id[self.sos] = len(item_to_id)
                 if self.eos != '':
                     item_to_id[self.eos] = len(item_to_id)
 
+        # add all tokens to item_to_id
         for i, (token, freq) in enumerate(count_pairs):
             if token not in item_to_id:
                 item_to_id[token] = len(item_to_id)
             if freq == 1:
+                # token only found once in input
                 unk_list.add(token)
         return item_to_id, unk_list
 
@@ -266,8 +305,11 @@ class TextLoader:
                 ngram = _word[i:i + n]
                 ngram_dict[ngram] += 1
 
+        #ngram_dict is a dictionary ngram -> frequency
+
         unk_ngram_list = set()
         item_to_id = dict()
+        #sorted_dict is a list of tuples (token, freq)
         sorted_dict = sorted(ngram_dict.items(), key=operator.itemgetter(1), reverse=True)
         for token, freq in sorted_dict:
             if freq == 1:

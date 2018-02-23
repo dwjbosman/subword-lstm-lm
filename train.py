@@ -8,6 +8,7 @@ import time
 import os
 import pickle
 import sys
+import json
 from utils import TextLoader
 from biLSTM import BiLSTMModel
 from add import AdditiveModel
@@ -82,6 +83,12 @@ def main():
                         help='continue training')
     parser.add_argument('--seed', type=int, default=0,
                         help='seed for random initialization')
+    parser.add_argument('--json', type=str, default='true',
+                        help='Use JSON format instead of pickle for saved data')
+    parser.add_argument('--debug', action='store_true',
+                        help="Output debug messages")
+
+
     args = parser.parse_args()
     train(args)
 
@@ -171,8 +178,12 @@ def train(args):
         if args.composition != "none":
             sys.exit("Wrong composition.")
 
-    with open(os.path.join(args.save_dir, 'config.pkl'), 'wb') as f:
-        pickle.dump(args, f)
+    if args.json == 'true':
+        with open(os.path.join(args.save_dir, 'config.json'), 'w') as f:
+            json.dump(args.__dict__,f,indent=4)
+    else: 
+        with open(os.path.join(args.save_dir, 'config.pkl'), 'wb') as f:
+            pickle.dump(args, f)
 
     if args.unit == "word":
         lm_model = WordModel
@@ -183,7 +194,6 @@ def train(args):
     else:
         sys.exit("Unknown unit or composition.")
 
-    print(args)
     print("Begin training...")
     with tf.Graph().as_default(), tf.Session() as sess:
         if args.seed != 0:
@@ -199,8 +209,10 @@ def train(args):
             mdev = lm_model(args, is_training=False)
 
         # save only the last model
-        saver = tf.train.Saver(tf.all_variables(), max_to_keep=1)
-        tf.initialize_all_variables().run()
+        saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
+        #saver = tf.train.Saver(tf.all_variables(), max_to_keep=1)
+        #tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
         dev_pp = 10000000.0
 
         # print(sess.run(mtrain.embedding))
