@@ -106,14 +106,23 @@ class AdditiveModel(object):
             softmax_b = tf.get_variable("softmax_b", [out_vocab_size])
 
             if self.debug:
-                print("output ",out_vocab_size)
+                print("output vocabulary size ",out_vocab_size)
+
+            loss_targets = tf.reshape(self._targets, [-1])
+            # loss_targets dim: [batch_size * num_steps]
+            if self.debug:
+                print("loss targets", loss_targets)
  
-            # compute cross entropy loss
+            # compute cross entropy loss, logits dim: [ batch_size * num_steps, out_vocab_size ]
             logits = tf.matmul(lm_outputs, softmax_w, transpose_b=True) + softmax_b
+                       
+            if self.debug:
+                print("logits ", logits)
+
             loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example (
-                [logits],
-                [tf.reshape(self._targets, [-1])],
-                [tf.ones([batch_size * num_steps])])
+                logits = [logits],
+                targets = [loss_targets],
+                weights = [tf.ones([batch_size * num_steps])])
 
             # compute cost
             self._cost = cost = tf.reduce_sum(loss) / batch_size
