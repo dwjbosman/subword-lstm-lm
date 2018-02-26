@@ -73,7 +73,7 @@ def main():
                         help='end of sentence symbol')
     parser.add_argument('--strip_chars', type=str, default='',
                         help='remove chars from input')
-    parser.add_argument('--token_chars', type=str, default='!?,',
+    parser.add_argument('--token_chars', type=str, default='!?,"\'().',
                         help='interpret chars as tokens in input')
      
     parser.add_argument('--ngram', type=int, default=3,

@@ -26,13 +26,13 @@ class TextLoader:
         self.eos = args.eos
         self.sos = args.sos
         self.debug = args.debug
-        self.strip = args.strip
+        self.strip_chars = args.strip_chars #TODO remove chars from input data
         self.token_chars = args.token_chars
 
 
         # '^' is a start of word symbol
         # '$' is a end of word symbol
-        self.special_token_list = set("<unk>", "<PAD>", "^", "$")
+        self.special_token_list = set(["<unk>", "<PAD>", "^", "$"])
         if self.sos != '':
             self.special_token_list.add(self.sos)
         if self.eos != '':
@@ -120,7 +120,7 @@ class TextLoader:
 
         if self.json == "true":
             with open(self.words_vocab_file, 'w') as f:
-                json.dump({"word_to_id" : self.word_to_id, "unk_word_list" : list(self.unk_word_list)}, f)
+                json.dump({"word_to_id" : self.word_to_id, "unk_word_list" : list(self.unk_word_list)}, f, indent = 4)
         else:
             with open(self.words_vocab_file, 'wb') as f:
                 pickle.dump((self.word_to_id, self.unk_word_list), f)
@@ -150,7 +150,7 @@ class TextLoader:
         self.subword_vocab_size = len(self.char_to_id)
         if self.json == "true":
             with open(self.sub_vocab_file, 'w') as f:
-                json.dump({"char_to_id" : self.char_to_id, "unk_char_list" : list(self.unk_char_list), "max_word_len" : self.max_word_len}, f)
+                json.dump({"char_to_id" : self.char_to_id, "unk_char_list" : list(self.unk_char_list), "max_word_len" : self.max_word_len}, f, indent = 4)
         else:
             with open(self.sub_vocab_file, 'wb') as f:
                 pickle.dump((self.char_to_id, self.unk_char_list, self.max_word_len), f)
@@ -168,7 +168,12 @@ class TextLoader:
         
         if self.json == "true":
             with open(self.sub_vocab_file, 'w') as f:
-              json.dump({"ngram_to_id" : self.ngram_to_id, "unk_char_list" : list(self.unk_char_list), "unk_ngram_list" : list(self.unk_ngram_list), "max_ngram_per_word" : self.max_ngram_per_word}, f)
+              json.dump(
+                {"ngram_to_id" : self.ngram_to_id, 
+                "unk_char_list" : list(self.unk_char_list), 
+                "unk_ngram_list" : list(self.unk_ngram_list), 
+                "max_ngram_per_word" : self.max_ngram_per_word}, 
+                f, indent = 4)
         else:       
             with open(self.sub_vocab_file, 'wb') as f:
                 pickle.dump((self.ngram_to_id, self.unk_char_list, self.unk_ngram_list, self.max_ngram_per_word), f)
@@ -189,7 +194,7 @@ class TextLoader:
                     {"morpheme_to_id" : self.morpheme_to_id, 
                     "unk_char_list" : list(self.unk_char_list), 
                     "unk_morph_list" : list(self.unk_morph_list), 
-                    "max_morph_per_word" : self.max_morph_per_word}, f)
+                    "max_morph_per_word" : self.max_morph_per_word}, f, indent = 4)
         else:
             with open(self.sub_vocab_file, 'wb') as f:
                 pickle.dump((self.morpheme_to_id, self.unk_char_list, self.unk_morph_list, self.max_morph_per_word), f)
@@ -202,7 +207,7 @@ class TextLoader:
         self.subword_vocab_size = len(self.morpheme_to_id)
         if self.json == "true":
             with open(self.sub_vocab_file, 'w') as f:
-                json.dump({"morpheme_to_id" : self.morpheme_to_id, "max_morph_per_word" : self.max_morph_per_word}, f)
+                json.dump({"morpheme_to_id" : self.morpheme_to_id, "max_morph_per_word" : self.max_morph_per_word}, f, indent = 4)
         else:
             with open(self.sub_vocab_file, 'wb') as f:
                 pickle.dump((self.morpheme_to_id, self.max_morph_per_word), f)
@@ -368,6 +373,8 @@ class TextLoader:
             if freq == 1:
                 unk_morpheme_list.add(token)
             if token not in item_to_id:
+                item_to_id[token] = len(item_to_id)
+
         return item_to_id, unk_morpheme_list, max_morph_per_word
 
     def build_oracle_vocab(self):
@@ -416,21 +423,32 @@ class TextLoader:
 
     def split_words(self, line):
         """Split a line across word boundaries, special chars are treated as words"""
+        #print("process ",line)
+
+        split_on = self.token_chars + " "
         start = 0
         while start < len(line):
-            special_char_index_min = len(line)
-            speical_char_min = ""
-            for special_char in self.special_chars:
-                special_char_index = string.find(line,special_char, start)
-                if special_char_index < special_char_index_min:
-                    special_char_index_min = special_char_index
-                    special_char_min = special_char
+            #print("  start ",start)
+            token_char_index_min = len(line)
+            token_char_min = ""
+            for token_char in split_on:
+                token_char_index = line.find(token_char, start)
+                if (token_char_index != -1) and (token_char_index < token_char_index_min):
+                    token_char_index_min = token_char_index
+                    token_char_min = token_char
             #first return the word until the next special char
-            yield line[start:special_char_index_min]
-            if special_char_min != "":
+            word = line[start:token_char_index_min]
+            #print("  found ",token_char_index_min)
+            if token_char_index_min > start:
+                #word is not empty and is not a a token itself
+                #print("  word ", word)
+                yield word
+            if (token_char_min != "") and (token_char_min != " "):
                 #then return the special char itself
-                yield special_char_min
-            start = special_char_index_min + 1
+                #space is not a special token
+                #print("  token ", token_char_min)
+                yield token_char_min
+            start = token_char_index_min + 1
 
 
     def read_dataset(self, filename):
@@ -446,14 +464,16 @@ class TextLoader:
                 # do not use "." as this would split abbreviations
                 sentences = data_line.split(". ")
                 for line in sentences:
-                    line = line.strip([".", " "])
+                    #remove dots and spaces at the start and end of the string
+                    line = line.strip(". \n\t")
                         
                     if self.lowercase or self.unit == "oracle":
                         line = line.lower()
                     if self.sos != '':
                         data.append(self.sos)
-                    
-                    for word in self.split_words(line):
+
+                    words = self.split_words(line)
+                    for word in words:
                         word = self.replace_special_chars(word)
                         _word = word
                         if self.unit == "oracle":
