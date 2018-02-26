@@ -25,6 +25,21 @@ class TextLoader:
         self.use_all_morphemes = True
         self.eos = args.eos
         self.sos = args.sos
+        self.debug = args.debug
+        self.strip = args.strip
+        self.token_chars = args.token_chars
+
+
+        # '^' is a start of word symbol
+        # '$' is a end of word symbol
+        self.special_token_list = set("<unk>", "<PAD>", "^", "$")
+        if self.sos != '':
+            self.special_token_list.add(self.sos)
+        if self.eos != '':
+            self.special_token_list.add(self.eos)
+        for c in self.token_chars:
+            self.special_token_list.add(c)
+
 
         if self.json == "true":
             self.config_extension = "json"
@@ -253,7 +268,10 @@ class TextLoader:
         if mode == "char":
             # '^' is a start of word symbol
             # '$' is a end of word symbol
-            item_to_id = self.add_to_dict(item_to_id, '^', '$')
+            #item_to_id = self.add_to_dict(item_to_id, '^', '$')
+            for char in self.special_token_list:
+                item_to_id[ char] = len(item_to_id)
+    
         else:
             # if specified, use a predefined output vocabulary
             if len(self.output_vocab) > 0:
@@ -268,11 +286,14 @@ class TextLoader:
                         break
             else:
                 # add <unk>, soc and eos to item_to_id dictionary
-                item_to_id['<unk>'] = len(item_to_id)
-                if self.sos != '':
-                    item_to_id[self.sos] = len(item_to_id)
-                if self.eos != '':
-                    item_to_id[self.eos] = len(item_to_id)
+                for sym in self.special_token_list:
+                    item_to_id[sym] = len(item_to_id)
+            
+                #item_to_id['<unk>'] = len(item_to_id)
+                #if self.sos != '':
+                #    item_to_id[self.sos] = len(item_to_id)
+                # if self.eos != '':
+                #    item_to_id[self.eos] = len(item_to_id)
 
         # add all tokens to item_to_id
         for i, (token, freq) in enumerate(count_pairs):
@@ -295,7 +316,8 @@ class TextLoader:
         max_ngram_per_word = 0
         ngram_dict = collections.defaultdict(int)
         for word in self.train_data:
-            if word == self.eos or word == self.sos:
+            #if word == self.eos or word == self.sos:
+            if word in self.special_token_list:
                 continue
             _word = '^' + word + '$'
             ngram_counts = len(_word) - n + 1
@@ -329,7 +351,8 @@ class TextLoader:
         morpheme_dict = collections.defaultdict(int)
         splitter = "@@"
         for token in self.train_data:
-            if token == self.eos or token == self.sos:
+            #if token == self.eos or token == self.sos:
+            if word in self.special_token_list:
                 continue
             token = '^' + token + '$'
             morphemes = token.split(splitter)
@@ -345,23 +368,26 @@ class TextLoader:
             if freq == 1:
                 unk_morpheme_list.add(token)
             if token not in item_to_id:
-                item_to_id[token] = len(item_to_id)
         return item_to_id, unk_morpheme_list, max_morph_per_word
 
     def build_oracle_vocab(self):
         max_morph_per_word = 0
         morpheme_dict = dict()
 
-        morpheme_dict['<unk>'] = len(morpheme_dict)
-        morpheme_dict['<PAD>'] = len(morpheme_dict)
-        if self.eos != '':
-            morpheme_dict[self.eos] = len(morpheme_dict)
-        if self.sos != '':
-            morpheme_dict[self.sos] = len(morpheme_dict)
+        for symbol in self.special_token_list:
+            morpheme_dict[symbol] = len(morpheme_dict)
+
+        #morpheme_dict['<unk>'] = len(morpheme_dict)
+        #morpheme_dict['<PAD>'] = len(morpheme_dict)
+        #if self.eos != '':
+        #    morpheme_dict[self.eos] = len(morpheme_dict)
+        #if self.sos != '':
+        #    morpheme_dict[self.sos] = len(morpheme_dict)
 
         splitter = "+"
         for token in self.train_data:
-            if token == self.eos or token == self.sos:
+            #if token == self.eos or token == self.sos:
+            if word in self.special_token_list:
                 continue
             morphemes = token.split(splitter)
             if splitter in token:
@@ -388,6 +414,25 @@ class TextLoader:
         word = re.sub("\$", "£", word)
         return word
 
+    def split_words(self, line):
+        """Split a line across word boundaries, special chars are treated as words"""
+        start = 0
+        while start < len(line):
+            special_char_index_min = len(line)
+            speical_char_min = ""
+            for special_char in self.special_chars:
+                special_char_index = string.find(line,special_char, start)
+                if special_char_index < special_char_index_min:
+                    special_char_index_min = special_char_index
+                    special_char_min = special_char
+            #first return the word until the next special char
+            yield line[start:special_char_index_min]
+            if special_char_min != "":
+                #then return the special char itself
+                yield special_char_min
+            start = special_char_index_min + 1
+
+
     def read_dataset(self, filename):
         """
         Read data set from a file and put them into a list of tokens
@@ -396,24 +441,30 @@ class TextLoader:
         """
         data = []
         with open(filename, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if self.lowercase or self.unit == "oracle":
-                    line = line.lower()
-                if self.sos != '':
-                    data.append(self.sos)
-                for word in line.split():
-                    word = self.replace_special_chars(word)
-                    _word = word
-                    if self.unit == "oracle":
-                        if "+" in word:
-                            _word = word.split('+')[0].split(":")[1]
-                    if self.unit == "morpheme":
-                            _word = re.sub("@@", "", word)
-                    if not self.is_hyperlink(_word.lower()) and len(_word) <= 100:
-                        data.append(word)
-                if self.eos != '':
-                    data.append(self.eos)
+            for data_line in f:
+                # a line can contain multiple sentences, split them by ". "
+                # do not use "." as this would split abbreviations
+                sentences = data_line.split(". ")
+                for line in sentences:
+                    line = line.strip([".", " "])
+                        
+                    if self.lowercase or self.unit == "oracle":
+                        line = line.lower()
+                    if self.sos != '':
+                        data.append(self.sos)
+                    
+                    for word in self.split_words(line):
+                        word = self.replace_special_chars(word)
+                        _word = word
+                        if self.unit == "oracle":
+                            if "+" in word:
+                                _word = word.split('+')[0].split(":")[1]
+                        if self.unit == "morpheme":
+                                _word = re.sub("@@", "", word)
+                        if not self.is_hyperlink(_word.lower()) and len(_word) <= 100:
+                            data.append(word)
+                    if self.eos != '':
+                        data.append(self.eos)
         return data
 
     def read_words(self):
@@ -443,11 +494,13 @@ class TextLoader:
 
     def read_chars(self):
         """
-        Read sequence of chars from a given file
+        Split the tokens in to chars
+        special_chars are not returned
         """
         char_data = []
         for word in self.train_data:
-            if word == self.eos or word == self.sos:
+            #if word == self.eos or word == self.sos:
+            if word in self.special_token_list:
                 continue
             if self.unit == "oracle":
                 if '+' in word:
@@ -475,22 +528,22 @@ class TextLoader:
         print("Longest word: " + max_word + " " + str(max_len))
         return max_len
 
-    def add_to_dict(self, _dict, start, end):
-        """
-        Add special symbols
-        :param _dict: the dictionary
-        :param start: start symbol
-        :param end: end symbol
-        :return: dictionary with counts
-        """
-        symbols = ['<unk>', start, end, '<PAD>']
-        if self.eos != '':
-            symbols.append(self.eos)
-        if self.sos != '':
-            symbols.append(self.sos)
-        for s in symbols:
-            _dict[s] = len(_dict)
-        return _dict
+    #def add_to_dict(self, _dict, start, end):
+    #    """
+    #    Add special symbols
+    #    :param _dict: the dictionary
+    #    :param start: start symbol
+    #    :param end: end symbol
+    #    :return: dictionary with counts
+    #    """
+    #    symbols = ['<unk>', start, end, '<PAD>']
+    #    if self.eos != '':
+    #        symbols.append(self.eos)
+    #    if self.sos != '':
+    #        symbols.append(self.sos)
+    #    for s in symbols:
+    #        _dict[s] = len(_dict)
+    #    return _dict
 
     def data_to_word_ids(self, input_data, filter=False):
         """
@@ -538,7 +591,8 @@ class TextLoader:
         """
         dimension = len(self.morpheme_to_id)
         encoding = np.zeros(dimension)
-        if word == self.eos or word == self.sos:
+        #if word == self.eos or word == self.sos:
+        if word in self.special_token_list:
             encoding[self.morpheme_to_id[word]] = 1
         else:
             if self.unit == "morpheme":
@@ -581,7 +635,8 @@ class TextLoader:
         :return: a vector morphemic representation of the word
         """
         encoding = list()
-        if word == self.eos or word == self.sos:
+        #if word == self.eos or word == self.sos:
+        if word in self.special_token_list:
             encoding.append(self.morpheme_to_id[word])
         else:
             if self.unit == "morpheme":
@@ -643,7 +698,8 @@ class TextLoader:
         """
         dimension = len(self.ngram_to_id)
         encoding = np.zeros(dimension)
-        if word == self.eos or word == self.sos:
+        #if word == self.eos or word == self.sos:
+        if word in self.special_token_list:
             encoding[self.ngram_to_id[word]] = 1
         else:
             _word = '^' + word + '$'
@@ -670,7 +726,8 @@ class TextLoader:
         """
         encoding = list()
         n = self.n
-        if word == self.eos or word == self.sos:
+        #if word == self.eos or word == self.sos:
+        if word in self.special_token_list:
             encoding.append(self.ngram_to_id[word])
         else:
             _word = '^' + word + '$'
@@ -714,7 +771,8 @@ class TextLoader:
         :return: a list of character ids of the word
         """
         chars = list()
-        if word == self.eos or word == self.sos:
+        #if word == self.eos or word == self.sos:
+        if word in self.special_token_list:
             chars.append(self.char_to_id[word])
         else:
             word = "^" + word + "$"
@@ -759,12 +817,18 @@ class TextLoader:
     def data_iterator(self, raw_data, batch_size, num_steps):
         data_len = len(raw_data)
         batch_len = data_len // batch_size
+        epoch_size = (batch_len - 1) // num_steps
+        
+        if self.debug:
+            print("data_len: %d batch_len: %d batch_size: %d num_steps: %d epoch_size: %d" %(data_len, batch_len, batch_size, num_steps, epoch_size))
+
         data = []
         for i in range(batch_size):
             x = raw_data[batch_len * i:batch_len * (i + 1)]
+            if self.debug:
+                print("  data1: %s" %(x))
             data.append(x)
 
-        epoch_size = (batch_len - 1) // num_steps
 
         if epoch_size == 0:
             raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
@@ -776,9 +840,19 @@ class TextLoader:
             for j in range(batch_size):
                 x = data[j][i * num_steps:(i + 1) * num_steps]
                 y = data[j][i * num_steps + 1:(i + 1) * num_steps + 1]
+                if self.debug:
+                    print("  %d/%d, %d " %(i,epoch_size,j))
+                    print("  x: %s" %(x))
+                    print("  y: %s" %(y))
+                    
+                enc_x = self.encode_data(x)
+                enc_y = self.data_to_word_ids(y, True)
 
-                xs.append(self.encode_data(x))
-                ys.append(self.data_to_word_ids(y, True))
+                xs.append(enc_x)
+                ys.append(enc_y)
+                if self.debug:
+                    print("  enc_x: %s" %(enc_x))
+                    print("  enc_y: %s" %(enc_y))
 
             yield (xs, ys)
 

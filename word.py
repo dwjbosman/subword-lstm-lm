@@ -23,7 +23,7 @@ class WordModel(object):
         rnn_cell = tf.nn.rnn_cell
         word_vocab_size = args.word_vocab_size
         out_vocab_size = args.out_vocab_size
-        tf_device = "/gpu:" + str(args.gpu)
+        tf_device = args.pu #"/gpu:" + str(args.gpu)
 
         if is_testing:
             self.batch_size = batch_size = 1

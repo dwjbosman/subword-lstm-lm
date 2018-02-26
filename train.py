@@ -61,8 +61,8 @@ def main():
                         help='the decay of the learning rate')
     parser.add_argument('--keep_prob', type=float, default=0.5,
                         help='the probability of keeping weights in the dropout layer')
-    parser.add_argument('--gpu', type=int, default=0,
-                        help='the gpu id, if have more than one gpu')
+    parser.add_argument('--pu', type=str, default= "/gpu:0",
+                        help='the processor id, if you have more than one gpu')
     parser.add_argument('--optimization', type=str, default='sgd',
                         help='sgd, momentum, or adagrad')
     parser.add_argument('--train', type=str, default='softmax',
@@ -71,6 +71,11 @@ def main():
                         help='start of sentence symbol')
     parser.add_argument('--EOS', type=str, default='true',
                         help='end of sentence symbol')
+    parser.add_argument('--strip_chars', type=str, default='',
+                        help='remove chars from input')
+    parser.add_argument('--token_chars', type=str, default='!?,',
+                        help='interpret chars as tokens in input')
+     
     parser.add_argument('--ngram', type=int, default=3,
                         help='length of character ngram (for char-ngram model only)')
     parser.add_argument('--char_dim', type=int, default=200,
@@ -88,7 +93,7 @@ def main():
     parser.add_argument('--debug', action='store_true',
                         help="Output debug messages")
 
-
+   
     args = parser.parse_args()
     train(args)
 

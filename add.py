@@ -14,6 +14,7 @@ class AdditiveModel(object):
         self.batch_size = batch_size = args.batch_size
         self.num_steps = num_steps = args.num_steps
         self.model = model = args.model
+        # in case of ngrams, subword_vocab_size is the number of different ngrams
         self.subword_vocab_size = subword_vocab_size = args.subword_vocab_size
         self.optimizer = args.optimization
         self.unit = args.unit
@@ -21,7 +22,7 @@ class AdditiveModel(object):
 
         rnn_size = args.rnn_size
         out_vocab_size = args.out_vocab_size
-        tf_device = "/gpu:" + str(args.gpu)
+        tf_device = args.pu #"/gpu:" + str(args.gpu)
 
         if is_testing:
             self.batch_size = batch_size = 1
@@ -73,7 +74,7 @@ class AdditiveModel(object):
 
             # split input into a list
             inputs = tf.split(axis = 1, num_or_size_splits = num_steps, value = inputs)
-            # inputs is a list of size num_steps with each tensor [batch_size, 1, sub_vocab_size]
+            # inputs is a list of size num_steps with each item a tensor of size [batch_size, 1, sub_vocab_size]
             if self.debug:
                 print("split inputs into %d results in %s" %(num_steps, str(inputs)))
 
@@ -89,7 +90,7 @@ class AdditiveModel(object):
 
             lm_outputs, lm_state = tf.contrib.rnn.static_rnn(lm_cell, lm_inputs, initial_state=self._initial_lm_state)
             
-            #lm_outputs is a list of num_steps tensors [batch_size, rnn_size]
+            #lm_outputs is a list of num_steps tensors each of size [batch_size, rnn_size]
             if self.debug:
                 print("lm_outputs1 ",lm_outputs)
             
