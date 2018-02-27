@@ -26,8 +26,7 @@ class TextLoader:
         self.eos = args.eos
         self.sos = args.sos
         self.debug = args.debug
-        self.strip_chars = args.strip_chars #TODO remove chars from input data
-        self.token_chars = args.token_chars
+        self.special_word_tokens = args.special_word_tokens
 
 
         # '^' is a start of word symbol
@@ -37,8 +36,15 @@ class TextLoader:
             self.special_token_list.add(self.sos)
         if self.eos != '':
             self.special_token_list.add(self.eos)
-        for c in self.token_chars:
-            self.special_token_list.add(c)
+        for regexp, repl in self.word_tokens:
+            before = ""
+            after = ""
+            token = repl
+            try:
+                before, token, after = repl
+            except:
+                pass
+            self.special_token_list.add(token)
 
 
         if self.json == "true":
@@ -421,36 +427,6 @@ class TextLoader:
         word = re.sub("\$", "£", word)
         return word
 
-    def split_words(self, line):
-        """Split a line across word boundaries, special chars are treated as words"""
-        #print("process ",line)
-
-        split_on = self.token_chars + " "
-        start = 0
-        while start < len(line):
-            #print("  start ",start)
-            token_char_index_min = len(line)
-            token_char_min = ""
-            for token_char in split_on:
-                token_char_index = line.find(token_char, start)
-                if (token_char_index != -1) and (token_char_index < token_char_index_min):
-                    token_char_index_min = token_char_index
-                    token_char_min = token_char
-            #first return the word until the next special char
-            word = line[start:token_char_index_min]
-            #print("  found ",token_char_index_min)
-            if token_char_index_min > start:
-                #word is not empty and is not a a token itself
-                #print("  word ", word)
-                yield word
-            if (token_char_min != "") and (token_char_min != " "):
-                #then return the special char itself
-                #space is not a special token
-                #print("  token ", token_char_min)
-                yield token_char_min
-            start = token_char_index_min + 1
-
-
     def read_dataset(self, filename):
         """
         Read data set from a file and put them into a list of tokens
@@ -459,33 +435,59 @@ class TextLoader:
         """
         data = []
         with open(filename, 'r') as f:
-            for data_line in f:
+            for line in f:
                 # a line can contain multiple sentences, split them by ". "
                 # do not use "." as this would split abbreviations
-                sentences = data_line.split(". ")
-                for line in sentences:
-                    #remove dots and spaces at the start and end of the string
-                    line = line.strip(". \n\t")
-                        
-                    if self.lowercase or self.unit == "oracle":
-                        line = line.lower()
-                    if self.sos != '':
-                        data.append(self.sos)
+                
+                for regexp, repl in self.special_word_tokens
+                    before = ""
+                    after = ""
+                    token = repl
+                    try:
+                        # try to extract tuple
+                        before, token, after = repl
+                    except:
+                        pass
+                    # replace a regexp with before token after
 
-                    words = self.split_words(line)
-                    for word in words:
-                        word = self.replace_special_chars(word)
-                        _word = word
-                        if self.unit == "oracle":
-                            if "+" in word:
-                                _word = word.split('+')[0].split(":")[1]
-                        if self.unit == "morpheme":
-                                _word = re.sub("@@", "", word)
-                        if not self.is_hyperlink(_word.lower()) and len(_word) <= 100:
-                            data.append(word)
-                    if self.eos != '':
-                        data.append(self.eos)
-        return data
+                    line = re.sub(regexp, before + token + after, line)
+                
+                # split tekst across already existing tokens and white space
+                tokens = re.split("(\s)+|<(.)+>")
+
+                if self.sos != '':
+                    data.append(self.sos)
+
+                sentence_start = True
+
+                for word in tokens:
+                    #remove dots and spaces at the start and end of the string
+                    word = token.strip()
+                    if word == "":
+                        continue
+     
+                    if self.lowercase or self.unit == "oracle":
+                        word = word.lower()
+                    word = self.replace_special_chars(word)
+                    _word = word
+                    if self.unit == "oracle":
+                        if "+" in word:
+                            _word = word.split('+')[0].split(":")[1]
+                    if self.unit == "morpheme":
+                        _word = re.sub("@@", "", word)
+                    if not self.is_hyperlink(_word.lower()) and len(_word) <= 100:
+                        if sentence_start and (self.sos != ''):
+                            data.append(self.sos)
+                            sentence_start = False
+                        data.append(word)
+                        if (self.eos != '') and (word == eos):
+                            sentence_start = True
+
+         if (self.eos != '') and (!sentence_start):
+            #last added token wasn't eos
+            data.append(self.eos)
+
+         return data
 
     def read_words(self):
         """

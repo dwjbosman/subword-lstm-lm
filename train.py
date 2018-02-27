@@ -71,10 +71,13 @@ def main():
                         help='start of sentence symbol')
     parser.add_argument('--EOS', type=str, default='true',
                         help='end of sentence symbol')
-    parser.add_argument('--strip_chars', type=str, default='',
-                        help='remove chars from input')
-    parser.add_argument('--token_chars', type=str, default='!?,"\'().',
-                        help='interpret chars as tokens in input')
+    parser.add_argument('--special_word_tokens', type=dict, default=
+                        {'!': "<!>",'?' : "<?>", 
+                        ' "([a-zA-Z])': ("","<sdq>","\g<1>"), '([a-zA-Z])" ' : ("\g<1>","<edq>",""), 
+                        " '([a-zA-Z])" : ("","<ssq>","\g<1>"), "([a-z[A-Z])' ": ("\g<1>","<esq>", ""),
+                        '(' : "<(>", ')' : "<)>",
+                        '\. ' : "</s>"},
+                        help='interpret certain regular expressions as word tokens in input')
      
     parser.add_argument('--ngram', type=int, default=3,
                         help='length of character ngram (for char-ngram model only)')
