@@ -39,12 +39,13 @@ class TextLoader:
         for regexp, repl in self.special_word_tokens.items():
             before = ""
             after = ""
-            token = repl
+            tokens = [repl]
             try:
-                before, token, after = repl
+                tokens, repl = repl
             except:
                 pass
-            self.special_token_list.add(token)
+            for token in tokens:
+                self.special_token_list.add(token)
 
         if self.debug:
             print("special_word_tokens: ", self.special_token_list)
@@ -444,28 +445,28 @@ class TextLoader:
                 if self.debug:
                     print("line: ",line)
    
-                for regexp, repl in self.special_word_tokens.items():
-                    before = ""
-                    after = ""
-                    token = repl
-                    try:
-                        # try to extract tuple
-                        before, token, after = repl
-                    except:
-                        pass
-                    # replace a regexp with before token after
-                    before += " "
-                    after = " " + after
-                    try:
-                        line = re.sub(regexp, before + token + after, line)
-                    except Exception as e:
-                        raise Exception("replace token failure using %s " %(regexp)) from e
-                    
-                    print("after r=%s b=%s a=%s line=%s\n" %(regexp,before,after,line))
-                if self.debug:
-                    print("line, replaced: ",line)
-
-
+                while True:
+                    #perform all regexes until no changes are made  
+                    oldline = line
+                    for regexp, repl in self.special_word_tokens.items():
+                        tokens = [ repl ]
+                        try:
+                            # try to extract tuple
+                            tokens, repl = repl
+                        except:
+                            pass
+                        # replace a regexp with before token after
+                        try:
+                            line = re.sub(regexp, repl, line)
+                        except Exception as e:
+                            raise Exception("replace token failure using %s " %(regexp)) from e
+                        
+                        print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
+                    if self.debug:
+                        print("line, replaced: ",line)
+                    if oldline == line:
+                        break            
+    
                 # split tekst across already existing tokens and white space
                 tokens = re.split("(\s+|<[^>]+>)",line)
                 if self.debug:

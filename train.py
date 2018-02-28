@@ -73,8 +73,8 @@ def main():
                         help='end of sentence symbol')
     parser.add_argument('--special_word_tokens', type=dict, default=
                         {'!': "<!>",'\?' : "<?>", 
-                        ' "([a-zA-Z])': ("","<sdq>","\g<1>"), '([a-zA-Z])"(\s|[.,?!])' : ("\g<1>","<edq>","\g<2>"), 
-                        " '([a-zA-Z])" : ("","<ssq>","\g<1>"), "([a-z[A-Z])'(\s|[.,?!])": ("\g<1>","<esq>", "\g<2>"),
+                        ' "([a-zA-Z])': (["<sdq>"],"<sdq> \g<1>"), '([a-zA-Z])"([ .,?!])' : (["<edq>"],"\g<1> <edq> \g<2>"), 
+                        " '([\\n\"'^]+)'" : (["<ssq>","<esq>"],"<ssq> \g<1> <esq>"), 
                         '\(' : "<(>", '\)' : "<)>",
                         '(\. )|(\.$)' : "</s>"},
                         help='interpret certain regular expressions as word tokens in input')
