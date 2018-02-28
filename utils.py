@@ -36,7 +36,7 @@ class TextLoader:
             self.special_token_list.add(self.sos)
         if self.eos != '':
             self.special_token_list.add(self.eos)
-        for regexp, repl in self.word_tokens:
+        for regexp, repl in self.special_word_tokens.items():
             before = ""
             after = ""
             token = repl
@@ -46,6 +46,8 @@ class TextLoader:
                 pass
             self.special_token_list.add(token)
 
+        if self.debug:
+            print("special_word_tokens: ", self.special_token_list)
 
         if self.json == "true":
             self.config_extension = "json"
@@ -438,8 +440,11 @@ class TextLoader:
             for line in f:
                 # a line can contain multiple sentences, split them by ". "
                 # do not use "." as this would split abbreviations
-                
-                for regexp, repl in self.special_word_tokens
+             
+                if self.debug:
+                    print("line: ",line)
+   
+                for regexp, repl in self.special_word_tokens.items():
                     before = ""
                     after = ""
                     token = repl
@@ -449,23 +454,33 @@ class TextLoader:
                     except:
                         pass
                     # replace a regexp with before token after
+                    before += " "
+                    after = " " + after
+                    try:
+                        line = re.sub(regexp, before + token + after, line)
+                    except Exception as e:
+                        raise Exception("replace token failure using %s " %(regexp)) from e
+                    
+                    print("after r=%s b=%s a=%s line=%s\n" %(regexp,before,after,line))
+                if self.debug:
+                    print("line, replaced: ",line)
 
-                    line = re.sub(regexp, before + token + after, line)
-                
+
                 # split tekst across already existing tokens and white space
-                tokens = re.split("(\s)+|<(.)+>")
+                tokens = re.split("(\s+|<[^>]+>)",line)
+                if self.debug:
+                    print("tokens: ",tokens)
+                    
 
-                if self.sos != '':
-                    data.append(self.sos)
+                print("sos : ",self.sos)
 
                 sentence_start = True
 
                 for word in tokens:
                     #remove dots and spaces at the start and end of the string
-                    word = token.strip()
+                    word = word.strip()
                     if word == "":
                         continue
-     
                     if self.lowercase or self.unit == "oracle":
                         word = word.lower()
                     word = self.replace_special_chars(word)
@@ -477,17 +492,22 @@ class TextLoader:
                         _word = re.sub("@@", "", word)
                     if not self.is_hyperlink(_word.lower()) and len(_word) <= 100:
                         if sentence_start and (self.sos != ''):
+                            # a new token is added, insert sos just before
                             data.append(self.sos)
                             sentence_start = False
                         data.append(word)
-                        if (self.eos != '') and (word == eos):
+                        if (self.eos != '') and (word == self.eos):
                             sentence_start = True
 
-         if (self.eos != '') and (!sentence_start):
+        if (self.eos != '') and (not sentence_start):
             #last added token wasn't eos
             data.append(self.eos)
+                
+        if self.debug:
+            print(data)
+        raise Exception("stop")
 
-         return data
+        return data
 
     def read_words(self):
         """

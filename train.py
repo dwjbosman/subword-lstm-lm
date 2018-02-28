@@ -72,11 +72,11 @@ def main():
     parser.add_argument('--EOS', type=str, default='true',
                         help='end of sentence symbol')
     parser.add_argument('--special_word_tokens', type=dict, default=
-                        {'!': "<!>",'?' : "<?>", 
-                        ' "([a-zA-Z])': ("","<sdq>","\g<1>"), '([a-zA-Z])" ' : ("\g<1>","<edq>",""), 
-                        " '([a-zA-Z])" : ("","<ssq>","\g<1>"), "([a-z[A-Z])' ": ("\g<1>","<esq>", ""),
-                        '(' : "<(>", ')' : "<)>",
-                        '\. ' : "</s>"},
+                        {'!': "<!>",'\?' : "<?>", 
+                        ' "([a-zA-Z])': ("","<sdq>","\g<1>"), '([a-zA-Z])"(\s|[.,?!])' : ("\g<1>","<edq>","\g<2>"), 
+                        " '([a-zA-Z])" : ("","<ssq>","\g<1>"), "([a-z[A-Z])'(\s|[.,?!])": ("\g<1>","<esq>", "\g<2>"),
+                        '\(' : "<(>", '\)' : "<)>",
+                        '(\. )|(\.$)' : "</s>"},
                         help='interpret certain regular expressions as word tokens in input')
      
     parser.add_argument('--ngram', type=int, default=3,
@@ -146,7 +146,7 @@ def train(args):
     if args.SOS == "true":
         args.sos = '<s>'
         args.out_vocab_size += 1
-
+        print("sos ena")
     data_loader = TextLoader(args)
     train_data = data_loader.train_data
     dev_data = data_loader.dev_data
