@@ -72,11 +72,20 @@ def main():
     parser.add_argument('--EOS', type=str, default='true',
                         help='end of sentence symbol')
     parser.add_argument('--special_word_tokens', type=dict, default=
-                        {'!': "<!>",'\?' : "<?>", 
-                        ' "([a-zA-Z])': (["<sdq>"],"<sdq> \g<1>"), '([a-zA-Z])"([ .,?!])' : (["<edq>"],"\g<1> <edq> \g<2>"), 
-                        " '([\\n\"'^]+)'" : (["<ssq>","<esq>"],"<ssq> \g<1> <esq>"), 
-                        '\(' : "<(>", '\)' : "<)>",
-                        '(\. )|(\.$)' : "</s>"},
+                        {
+                        '!([^>])': ( ["<!>"], "<!>\g<1>"),
+                        ',([^>])': ( ["<,>"], "<,>\g<1>"),
+                        '\?([^>])' : ( ["<?>"] , "<?>\g<1>"),  
+                        '( |>)"([<a-zA-Z])': (["<sdq>"],"\g<1><sdq>\g<2>"), 
+                        '([a-zA-Z>])"([ .,?!<])' : (["<edq>"],"\g<1><edq>\g<2>"), 
+                        "^'([^\\n\"']+)'" : (["<ssq>","<esq>"],"<ssq>\g<1><esq>"), 
+                        "([ >])'([^\\n\"']+)'" : (["<ssq>","<esq>"],"\g<1><ssq>\g<2><esq>"), 
+                        '\(([^>])' : ( ["<(>"] , "<(>\g<1>"),
+                        '\)([^>])' : ( ["<)>"] , "<)>\g<1>"), 
+                        '\.\'' : "</s>'",
+                        '\. ([^a-z])' : ( ["</s>"] , "</s>\g<1>" ),
+                        '(\.$)' : "</s>",
+                        },
                         help='interpret certain regular expressions as word tokens in input')
      
     parser.add_argument('--ngram', type=int, default=3,

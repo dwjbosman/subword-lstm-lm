@@ -37,8 +37,6 @@ class TextLoader:
         if self.eos != '':
             self.special_token_list.add(self.eos)
         for regexp, repl in self.special_word_tokens.items():
-            before = ""
-            after = ""
             tokens = [repl]
             try:
                 tokens, repl = repl
@@ -444,7 +442,8 @@ class TextLoader:
              
                 if self.debug:
                     print("line: ",line)
-   
+                
+                iteration = 0 
                 while True:
                     #perform all regexes until no changes are made  
                     oldline = line
@@ -462,19 +461,19 @@ class TextLoader:
                             raise Exception("replace token failure using %s " %(regexp)) from e
                         
                         print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
-                    if self.debug:
-                        print("line, replaced: ",line)
+                    #if self.debug:
+                    #    print("line, replaced: ",line)
+                    iteration += 1
+                    if iteration>10:
+                        raise Exception("Too many replace iterations, bug in token regexps?")
                     if oldline == line:
                         break            
     
                 # split tekst across already existing tokens and white space
                 tokens = re.split("(\s+|<[^>]+>)",line)
-                if self.debug:
-                    print("tokens: ",tokens)
+                #if self.debug:
+                #    print("tokens: ",tokens)
                     
-
-                print("sos : ",self.sos)
-
                 sentence_start = True
 
                 for word in tokens:
@@ -492,7 +491,7 @@ class TextLoader:
                     if self.unit == "morpheme":
                         _word = re.sub("@@", "", word)
                     if not self.is_hyperlink(_word.lower()) and len(_word) <= 100:
-                        if sentence_start and (self.sos != ''):
+                        if sentence_start and (self.sos != '') and (word not in self.special_token_list):
                             # a new token is added, insert sos just before
                             data.append(self.sos)
                             sentence_start = False
@@ -506,8 +505,7 @@ class TextLoader:
                 
         if self.debug:
             print(data)
-        raise Exception("stop")
-
+        
         return data
 
     def read_words(self):
