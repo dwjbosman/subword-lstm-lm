@@ -460,7 +460,7 @@ class TextLoader:
                         except Exception as e:
                             raise Exception("replace token failure using %s " %(regexp)) from e
                         
-                        print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
+                    #    print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
                     #if self.debug:
                     #    print("line, replaced: ",line)
                     iteration += 1
@@ -495,6 +495,7 @@ class TextLoader:
                             # a new token is added, insert sos just before
                             data.append(self.sos)
                             sentence_start = False
+                        print(word)
                         data.append(word)
                         if (self.eos != '') and (word == self.eos):
                             sentence_start = True
