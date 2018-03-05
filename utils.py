@@ -36,12 +36,7 @@ class TextLoader:
             self.special_token_list.add(self.sos)
         if self.eos != '':
             self.special_token_list.add(self.eos)
-        for regexp, repl in self.special_word_tokens.items():
-            tokens = [repl]
-            try:
-                tokens, repl = repl
-            except:
-                pass
+        for regexp, tokens, repl in self.special_word_tokens:
             for token in tokens:
                 self.special_token_list.add(token)
 
@@ -435,8 +430,10 @@ class TextLoader:
         :return: data
         """
         data = []
+        line_nr = 0
         with open(filename, 'r') as f:
             for line in f:
+                line_nr += 1
                 # a line can contain multiple sentences, split them by ". "
                 # do not use "." as this would split abbreviations
              
@@ -447,20 +444,14 @@ class TextLoader:
                 while True:
                     #perform all regexes until no changes are made  
                     oldline = line
-                    for regexp, repl in self.special_word_tokens.items():
-                        tokens = [ repl ]
-                        try:
-                            # try to extract tuple
-                            tokens, repl = repl
-                        except:
-                            pass
+                    for regexp, tokens, repl in self.special_word_tokens:
                         # replace a regexp with before token after
                         try:
                             line = re.sub(regexp, repl, line)
                         except Exception as e:
                             raise Exception("replace token failure using %s " %(regexp)) from e
                         
-                    #    print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
+                        #print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
                     #if self.debug:
                     #    print("line, replaced: ",line)
                     iteration += 1
@@ -495,7 +486,7 @@ class TextLoader:
                             # a new token is added, insert sos just before
                             data.append(self.sos)
                             sentence_start = False
-                        print(word)
+                        print("w<%s>=%d" %(word,line_nr))
                         data.append(word)
                         if (self.eos != '') and (word == self.eos):
                             sentence_start = True
@@ -506,7 +497,6 @@ class TextLoader:
                 
         if self.debug:
             print(data)
-        
         return data
 
     def read_words(self):
