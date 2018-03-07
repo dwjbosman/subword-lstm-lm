@@ -218,29 +218,68 @@ class TextLoader:
         """
         Load preprocessed dictionaries, this is called during testing.
         """
-        with open(self.words_vocab_file, 'rb') as f:
-            self.word_to_id, self.unk_word_list = pickle.load(f)
-            self.word_vocab_size = len(self.word_to_id)
+        if self.json == "true":
+            with open(self.words_vocab_file, 'r') as f:
+                data = json.load(f)
+                self.word_to_id = data["word_to_id"]
+                self.unk_word_list = data["unk_word_list"]
+
+        else:
+            with open(self.words_vocab_file, 'rb') as f:
+                self.word_to_id, self.unk_word_list = pickle.load(f)
+        self.word_vocab_size = len(self.word_to_id)
 
         if self.unit != "word":
-            with open(self.sub_vocab_file, 'rb') as f:
-                if self.unit == "char":
-                    self.max_word_len = self.get_max_word_length(self.word_to_id) + 2
-                    self.char_to_id, self.unk_char_list, self.max_word_len = pickle.load(f)
-                    self.subword_vocab_size = len(self.char_to_id)
-                elif self.unit == "char-ngram":
-                    self.ngram_to_id, self.unk_char_list, self.unk_ngram_list, \
-                    self.max_ngram_per_word = pickle.load(f)
-                    self.subword_vocab_size = len(self.ngram_to_id)
-                elif self.unit == "morpheme":
-                    self.morpheme_to_id, self.unk_char_list, self.unk_morph_list, \
-                    self.max_morph_per_word = pickle.load(f)
-                    self.subword_vocab_size = len(self.morpheme_to_id)
-                elif self.unit == "oracle":
-                    self.morpheme_to_id, self.max_morph_per_word = pickle.load(f)
-                    self.subword_vocab_size = len(self.morpheme_to_id)
-                else:
-                    sys.exit("Unknown unit")
+            if self.json == "true":
+                with open(self.sub_vocab_file, 'r') as f:
+                    if self.unit == "char":
+                        self.max_word_len = self.get_max_word_length(self.word_to_id) + 2
+                        data = json.load(f)
+                        self.char_to_id = data["char_to_id"]
+                        self.unk_char_list = data["unk_char_list"]
+                        self.max_word_len = data["max_word_len"]
+                        self.subword_vocab_size = len(self.char_to_id)
+                    elif self.unit == "char-ngram":
+                        data = json.load(f)
+                        self.ngram_to_id = data["ngram_to_id"]
+                        self.unk_char_list = data["unk_char_list"]
+                        self.unk_ngram_list = data["unk_ngram_list"]
+                        self.max_ngram_per_word = data["max_ngram_per_word"]
+                        self.subword_vocab_size = len(self.ngram_to_id)
+                    elif self.unit == "morpheme":
+                        data = json.load(f)
+                        self.morpheme_to_id = data["morpheme_to_id"]
+                        self.unk_char_list = data["unk_char_list"]
+                        self.unk_morph_list = data["unk_morph_list"]
+                        self.max_morph_per_word = data["max_morph_per_word"]
+                        self.subword_vocab_size = len(self.morpheme_to_id)
+                    elif self.unit == "oracle":
+                        data = json.load(f)
+                        self.morpheme_to_id = data["morpheme_to_id"]
+                        self.max_morph_per_word = data["max_morpheme_per_word"]
+                        self.subword_vocab_size = len(self.morpheme_to_id)
+                    else:
+                        sys.exit("Unknown unit")
+
+            else:
+                with open(self.sub_vocab_file, 'rb') as f:
+                    if self.unit == "char":
+                        self.max_word_len = self.get_max_word_length(self.word_to_id) + 2
+                        self.char_to_id, self.unk_char_list, self.max_word_len = pickle.load(f)
+                        self.subword_vocab_size = len(self.char_to_id)
+                    elif self.unit == "char-ngram":
+                        self.ngram_to_id, self.unk_char_list, self.unk_ngram_list, \
+                        self.max_ngram_per_word = pickle.load(f)
+                        self.subword_vocab_size = len(self.ngram_to_id)
+                    elif self.unit == "morpheme":
+                        self.morpheme_to_id, self.unk_char_list, self.unk_morph_list, \
+                        self.max_morph_per_word = pickle.load(f)
+                        self.subword_vocab_size = len(self.morpheme_to_id)
+                    elif self.unit == "oracle":
+                        self.morpheme_to_id, self.max_morph_per_word = pickle.load(f)
+                        self.subword_vocab_size = len(self.morpheme_to_id)
+                    else:
+                        sys.exit("Unknown unit")
 
     def load_vocab_dict(self, vocab_file):
         """
@@ -451,7 +490,7 @@ class TextLoader:
                         except Exception as e:
                             raise Exception("replace token failure using %s " %(regexp)) from e
                         
-                        #print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
+                        print("after r=%s repl=%s line=%s\n" %(regexp,repl,line))
                     #if self.debug:
                     #    print("line, replaced: ",line)
                     iteration += 1
@@ -876,15 +915,17 @@ class TextLoader:
                     print("  %d/%d, %d " %(i,epoch_size,j))
                     print("  x: %s" %(x))
                     print("  y: %s" %(y))
-                    
+                    pass
+
                 enc_x = self.encode_data(x)
                 enc_y = self.data_to_word_ids(y, True)
 
                 xs.append(enc_x)
                 ys.append(enc_y)
                 if self.debug:
-                    print("  enc_x: %s" %(enc_x))
-                    print("  enc_y: %s" %(enc_y))
+                    #print("  enc_x: %s" %(enc_x))
+                    #print("  enc_y: %s" %(enc_y))
+                    pass
 
             yield (xs, ys)
 
@@ -892,11 +933,15 @@ class TextLoader:
         data_len = len(raw_data)
         batch_len = data_len // batch_size
         data = []
+        epoch_size = (batch_len - 1) // num_steps
+        
+        if self.debug:
+            print("data_len: %d batch_len: %d batch_size: %d num_steps: %d epoch_size: %d" %(data_len, batch_len, batch_size, num_steps, epoch_size))
+
         for i in range(batch_size):
             x = raw_data[batch_len * i:batch_len * (i + 1)]
             data.append(x)
 
-        epoch_size = (batch_len - 1) // num_steps
 
         if epoch_size == 0:
             raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
@@ -908,6 +953,12 @@ class TextLoader:
             for j in range(batch_size):
                 x = data[j][i * num_steps:(i + 1) * num_steps]
                 y = data[j][i * num_steps + 1:(i + 1) * num_steps + 1]
+                if self.debug:
+                    print("  %d/%d, %d " %(i,epoch_size,j))
+                    print("  x: %s" %(x))
+                    print("  y: %s" %(y))
+                    pass
+
 
                 xs.append(self.encode_data(x))
                 ys.append(self.data_to_word_ids(y, True))

@@ -11,7 +11,7 @@ from utils import TextLoader
 from biLSTM import BiLSTMModel
 from add import AdditiveModel
 from word import WordModel
-
+import json
 
 def main():
     parser = argparse.ArgumentParser()
@@ -19,6 +19,11 @@ def main():
                         help="text file consists of words of interest")
     parser.add_argument('--save_dir', type=str, default='wiki_models/id/bpe.lstm',
                         help='directory of the checkpointed models')
+    parser.add_argument('--json', type=str, default='true',
+                        help='Use JSON format instead of pickle for saved data')
+    parser.add_argument('--debug', action='store_true',
+                        help="Output debug messages")
+
     args = parser.parse_args()
     test(args)
 
@@ -31,7 +36,8 @@ def run_epoch(session, m, data, data_loader, eval_op):
         session.run(m.initial_fw_state)
         session.run(m.initial_bw_state)
 
-    for step, (x, y, word) in enumerate(data_loader.data_iterator_test(data, m.batch_size, m.num_steps)):
+    word = ""
+    for step, (x, y ) in enumerate(data_loader.data_iterator_test(data, m.batch_size, m.num_steps)):
         if word != "<s>" and word != "</s>":
             vector, cost, state, _ = session.run([m.input_vectors, m.cost, m.final_state, eval_op],
                                               {m.input_data: x,
@@ -44,12 +50,24 @@ def run_epoch(session, m, data, data_loader, eval_op):
 
     return np.exp(costs / iters)
 
+class Bunch(object):
+  def __init__(self, adict):
+    self.__dict__.update(adict)
 
 def test(test_args):
     start = time.time()
+    if test_args.json == "true":
+        config_extension = "json"
+    else:
+        config_extension = "pkl"
 
-    with open(os.path.join(test_args.save_dir, 'config.pkl'), 'rb') as f:
-        args = pickle.load(f)
+    if test_args.json=="true":
+        with open(os.path.join(test_args.save_dir, 'config.%s' %(config_extension)), 'r') as f:
+            args_dict = json.load(f)
+        args = Bunch(args_dict)
+    else:   
+        with open(os.path.join(test_args.save_dir, 'config.%s' %(config_extension)), 'rb') as f:
+            args = pickle.load(f)
 
     args.save_dir = test_args.save_dir
     data_loader = TextLoader(args, train=False)
