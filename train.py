@@ -86,14 +86,6 @@ def main():
                             ("\"([^\"]+)\"(\s|$|<)" , ["<dq>", "</dq>" ] , "<dq>\g<1></dq>\g<2>"),
                             ('\"([^>])', ["<dq>"] , "<dq>\g<1>"),
                             ('(\s|>)[0-9,.]+(\s|$|<)' , ["<num>"], "\g<1><num>\g<2>" ), 
-                        #"^\"([^\\n\"]+)\"" : (["<sdq>","<edq>"],"<sdq>\g<1><edq>"), 
-                        #"([ >:])\"([^\\n\"]+)\"" : (["<sdq>","<edq>"],"\g<1><sdq>\g<2><edq>"), 
-                        #"^'([^\\n\"']+)'" : (["<ssq>","<esq>"],"<ssq>\g<1><esq>"), 
-                        #"([ >:])'([^\\n\"']+)'" : (["<ssq>","<esq>"],"\g<1><ssq>\g<2><esq>"), 
-                        #'\.\'' : "</s>'",
-                        #'([^a-zA-Z])[0-9,.]+([^a-zA-Z])' : ( ["<num>"], "\g<1><num>\g<2>" ), 
-                        #'\. ([^a-z])' : ( ["</s>"] , "</s>\g<1>" ),
-                        #'(\.$)' : "</s>",
                         ],
                         help='interpret certain regular expressions as word tokens in input')
      
@@ -104,7 +96,7 @@ def main():
     parser.add_argument('--morph_dim', type=int, default=200,
                         help='dimension of morpheme embedding (for M2W model only)')
     parser.add_argument('--word_dim', type=int, default=200,
-                        help='dimension of word embedding (for C2W model only)')
+                        help='dimension of word embedding (for word and C2W model only)')
     parser.add_argument('--cont', type=str, default='false',
                         help='continue training')
     parser.add_argument('--seed', type=int, default=0,

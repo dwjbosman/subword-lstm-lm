@@ -67,7 +67,7 @@ class BiLSTMModel(object):
                         c2w_bw_cell = tf.nn.rnn_cell.DropoutWrapper(c2w_bw_cell, output_keep_prob=args.keep_prob)
                     self._initial_bw_state = c2w_bw_cell.zero_state(num_steps, tf.float32)
 
-                # character embedding
+                # subword (eg. char) embedding
                 char_embedding = tf.get_variable("char_embedding", [subword_vocab_size, subword_dim])
                 with tf.device("/cpu:0"):
                     inputs = tf.nn.embedding_lookup(char_embedding, self._input_data)
@@ -89,7 +89,7 @@ class BiLSTMModel(object):
 
                 fw_state = self._initial_fw_state
                 bw_state = self._initial_bw_state
-                # process each word in the sentence
+                # process each (sub)word in the sentence
                 for i in range(len(inputs)):
                     # reuse variable for each sentence, except for the first one
                     if i > 0:
@@ -128,20 +128,21 @@ class BiLSTMModel(object):
 
                 # split input into a list
                 self.input_vectors = c2w_outputs
-                inputs = tf.split(c2w_outputs, num_steps, 1)
-                if word_dim == rnn_size:
-                    lm_inputs = tf.stack([tf.squeeze(input_, [1]) for input_ in inputs])
-                    # self.emb = c2w_outputs
-                else:
-                    softmax_win = tf.get_variable("softmax_win", [word_dim, rnn_size])
-                    softmax_bin = tf.get_variable("softmax_bin", [rnn_size])
-
-                    lm_inputs = []
-                    for input_ in inputs:
-                        input_ = tf.squeeze(input_, [1])
-                        input_ = tf.matmul(input_, softmax_win) + softmax_bin
-                        lm_inputs.append(input_)
-                    # self.emb = tf.concat(0, lm_inputs)
+                #dead code?
+                #inputs = tf.split(c2w_outputs, num_steps, 1)
+                #if word_dim == rnn_size:
+                #   lm_inputs = tf.stack([tf.squeeze(input_, [1]) for input_ in inputs])
+                #    # self.emb = c2w_outputs
+                #else:
+                #    softmax_win = tf.get_variable("softmax_win", [word_dim, rnn_size])
+                #    softmax_bin = tf.get_variable("softmax_bin", [rnn_size])
+                #
+                #    lm_inputs = []
+                #    for input_ in inputs:
+                #        input_ = tf.squeeze(input_, [1])
+                #        input_ = tf.matmul(input_, softmax_win) + softmax_bin
+                #        lm_inputs.append(input_)
+                #    # self.emb = tf.concat(0, lm_inputs)
 
                 lm_outputs, lm_state = tf.nn.dynamic_rnn(lm_cell, c2w_outputs, initial_state=self._initial_lm_state)
                 lm_outputs = tf.concat(lm_outputs, 1)

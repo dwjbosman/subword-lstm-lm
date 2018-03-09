@@ -43,8 +43,9 @@ def run_epoch(session, m, data, data_loader, eval_op):
                                               {m.input_data: x,
                                                m.targets: y,
                                                m.initial_lm_state: state})
-            print("word: " + word)
-            print(vector)
+            #print("word: " + word)
+            print("shape ", vector[0].shape)
+            print(vector[0])
             costs += cost
             iters += m.num_steps
 

@@ -767,6 +767,9 @@ class TextLoader:
         :param n: the length of character to encode (n-gram)
         :return: a vector unit of the input word
         """
+        if self.debug:
+            print("encode as binary ngram vector: %s" %(word))
+
         dimension = len(self.ngram_to_id)
         encoding = np.zeros(dimension)
         #if word == self.eos or word == self.sos:
@@ -776,17 +779,24 @@ class TextLoader:
             _word = '^' + word + '$'
             for i in range(len(_word) - n + 1):
                 ngram = _word[i:i+n]
+
                 if ngram in self.ngram_to_id:
-                    encoding[self.ngram_to_id[ngram]] = 1
+                    ngram_id = self.ngram_to_id[ngram]
+                    print("ngram %d =  %s with id %d" %(i,ngram,ngram_id))
+                    encoding[ngram_id] = 1
                 else:
                     for ch in ngram:
                         flag = 1
                         if ch in self.unk_char_list:
                             flag = random.randint(0, 1)
+                        ngram_id = None
                         if ch in self.ngram_to_id and flag == 1:
-                            encoding[self.ngram_to_id[ch]] = 1
+                            ngram_id = self.ngram_to_id[ch]
                         else:
-                            encoding[self.ngram_to_id['<unk>']] = 1
+                            ngram_id = self.ngram_to_id['<unk>']
+                         
+                        encoding[ngram_id] = 1
+                        print("ngram %d = (char) %s with id %d" %(i,ch,ngram_id))
         return encoding
 
     def word_to_ngrams(self, word):
@@ -804,6 +814,8 @@ class TextLoader:
             _word = '^' + word + '$'
             for i in range(len(_word) - n + 1):
                 ngram = _word[i:i + n]
+                if self.debug:
+                    print("ngram %d: %s\n",i,ngram)
                 if ngram in self.ngram_to_id:
                     encoding.append(self.ngram_to_id[ngram])
                 else:
@@ -875,6 +887,7 @@ class TextLoader:
         :param data: input data
         :return: encoded input data
         """
+        print("encode data as %s " %(self.unit))
         if self.unit == "char":
             data = self.char_encoding(data)
         elif self.unit == "char-ngram":
@@ -923,8 +936,8 @@ class TextLoader:
                 xs.append(enc_x)
                 ys.append(enc_y)
                 if self.debug:
-                    #print("  enc_x: %s" %(enc_x))
-                    #print("  enc_y: %s" %(enc_y))
+                    print("  enc_x: %s" %(enc_x))
+                    print("  enc_y: %s" %(enc_y))
                     pass
 
             yield (xs, ys)
@@ -957,11 +970,22 @@ class TextLoader:
                     print("  %d/%d, %d " %(i,epoch_size,j))
                     print("  x: %s" %(x))
                     print("  y: %s" %(y))
-                    pass
 
+                enc_x = self.encode_data(x)
+                enc_y = self.data_to_word_ids(y, True)
 
-                xs.append(self.encode_data(x))
-                ys.append(self.data_to_word_ids(y, True))
+                xs.append(enc_x)
+                ys.append(enc_y)
+                if self.debug:
+                    it = np.nditer(enc_x, flags=['f_index'])
+                    while not it.finished:
+                        if it[0]!=0: 
+                            print("enc_x: <%d>" % (it.index))
+                        it.iternext()
+                    for val in enc_y:
+                        print("enc_y: <%d>" % (val))
+     
+
 
             yield (xs, ys)
 

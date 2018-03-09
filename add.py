@@ -69,6 +69,7 @@ class AdditiveModel(object):
             if is_training and args.keep_prob < 1:
                 inputs = tf.nn.dropout(inputs, args.keep_prob)
 
+            #rnn_size is also the number of word embedding dimensions
             softmax_win = tf.get_variable("softmax_win", [subword_vocab_size, rnn_size])
             softmax_bin = tf.get_variable("softmax_bin", [rnn_size])
 
@@ -86,7 +87,11 @@ class AdditiveModel(object):
                 # input_ : [batch_size, rnn_size]
                 lm_inputs.append(input_)
             if self.debug:
-                print("list of inputs ", lm_inputs)
+                print("lm_inputs ", lm_inputs)
+
+           
+            #input_vectors contains the embedding, is read  by extract_embedding
+            self.input_vectors = lm_inputs 
 
             lm_outputs, lm_state = tf.contrib.rnn.static_rnn(lm_cell, lm_inputs, initial_state=self._initial_lm_state)
             
